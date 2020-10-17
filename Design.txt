@@ -1,0 +1,76 @@
+Client
+    run(work_function, static_parameter_map, parameter_map_list, [filter_function], [reduce_function])
+        work_function is the function that will be execute on the workers. It represents the 'thread task'.
+        static_parameter_map maps parameters to arguments. These parameters should be the ones that remain the same for every call to work_function.
+        parameter_map_list is a list of maps from parameters to arguments. Each map represents a single thread task, specifically the arguments used for that call to work_function.
+        filter_function is an optional argument used to filter the output of work_function. It should be a predicate that takes exactly one argument, of the same type as the output of work_function. When the predicate is true, the output of work_function will be included in the result set. When the predicate is false, the output of work_function will be omitted from the result set. If reduce_function is present, only outputs of work_function that satisfy the predicate will be red into reduce_function.
+        reduce_function is an optional argument used to reduce the outputs of work_function into a single object which will be returned. This function should take two arguments of the same type as the output of work_function, and should return an object of this same type.
+    
+    generateAndRun(work_function, static_parameter_map, generator_function, generator_parameter_map, [filter_function], [reduce_function], [stop_function])
+        work_function is the function that will be execute on the workers. It represents the 'thread task'.
+        static_parameter_map maps parameters to arguments. These parameters should be the ones that remain the same for every call to work_function.
+        generator_function is a function that generates the input to work_function. It should return an iterable whose elements are maps from parameters to arguments. Each map should represent a single thread task, specifically the arguments use for that call to work_function.
+        generator_parameter_amp If this argument is a dictionary, it maps parameters to arguments. These parameters will be the input to generator_function. In this case, only one server can be used to execute this task set. If this argument is a list of dictionaries, a differnt set of arguments will be used for each server. 
+        filter_function is an optional argument used to filter the output of work_function. It should be a predicate that takes exactly one argument, of the same type as the output of work_function. When the predicate is true, the output of work_function will be included in the result set. When the predicate is false, the output of work_function will be omitted from the result set. If reduce_function is present, only outputs of work_function that satisfy the predicate will be red into reduce_function.
+        reduce_function is an optional argument used to reduce the outputs of work_function into a single object which will be returned. This function should take two arguments of the same type as the output of work_function, and should return an object of this same type.
+        stop_function is an optional argument used to prematurely stop the execution  work_function. Similar to filter_function it is applied to the output of work_function, but when this predicate is true no more executions of work_function will be done. All executions up to and including the first that causes stop_function to return true will be returned, and no others will be.
+
+    connect(servers)
+        servers is a list of tuples containing hostnames and ports. Each of these tuples will be used to connect to a server.
+
+    All 'run' functions should be asyncronous.
+    Communication between the client and server should be done over sockets. 
+    The client should automatically distribute tasks among the servers it is connected to, based on some metric.
+    The client should periodically poll servers to get updates on the status of its requests.
+
+Server 
+    register_function(function)
+        function is a function provided by the client. It should be associated with a hash of itself, so that when the client provides this hash the function can be retrieved.
+    
+    run(work_function_hash, static_parameter_map, parameter_map_list, [filter_function], [reduce_function])
+        work_function_hash is the hash of the work function the user provided. This function must already have been loaded using register_function
+        other args are the same as Client.run
+
+    generateAndRun(work_function_hash, static_parameter_map, generator_function_hash, generator_parameter_map, [filter_function_hash], [reduce_function_hash], [stop_function_hash]
+        work_function_hash is the hash of the work function the user provided. THis function must already have been loaded using register_function
+        generator_function_hash is the hash of the generator function the user provided. This function must have already been loaded using register_function
+        filter_function_hash is the hash of the filter function the user provided. This function must have already been loaded using register_function.
+        reduce_function_hash is the hash of the reduce function the user provided. This function must have already been loaded using register_function.
+        stop_function_hash is the hash of the stop function the user provided. This function must have already been loaded using register_function.
+        other args are the same as Client.generateAndRun.
+
+    assign_function(worker_id, function)
+        worker_id should be the identifier for an existing worker who will load function and associate it with a hash of function.
+        function is the function being assigned.
+
+    revoke_function(worker_id, function_hash)
+        worker_id should be the identifier for an existing worker who currently has the function whose hash is function_hash loaded
+        function_hash is the function hash of the function that this worker should forget
+
+    execTask(worker_id, work_function_hash, arguments, client_id)
+        worker_id should be an identifier for an existing worker which will execute this task
+        work_function_hash should be the hash of a function currently registered with this worker
+        arguments should be the arguments to work_function
+        client_id should be an identifier for the client that issued this task
+
+    execTaskSet(worker_id, work_function_hash, arguments, client_id)
+        arguments should be a list of maps from parameters to arguments. Each map will be used for one execution of work_function.
+        other args same as execTask
+    
+    filter(worker_id, filter_function_hash, values, client_id)
+        worker_id should be an identifier for an existing worker which will execute this task
+        filter_function_hash should be the hash of a function currently registered with this worker
+        values should be a list of outputs from the relevant work_function
+        client_id should be an identifier for the client that issues this task set
+
+    reduce(worker_id, reduce_function_hash, values, client_id, [filter_function_hash])
+        worker_id should be an identifier for an existing worker which will execute this task
+        filter_function_hash should be the hash of a function currently registered with this worker to be used as a filter. If it is not present, no filter will be applied.
+        values should be a list of outputs from the relevant work_function
+        client_id should be an identifier for the client that issues this task set
+
+worker
+    should have corresponding functions for relevant functions in server (assign_function, revoke_function, execTask, execTaskSet, filter, reduce)
+
+
+    
